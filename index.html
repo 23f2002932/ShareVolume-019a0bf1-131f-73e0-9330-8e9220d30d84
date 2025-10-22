@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadence Design Systems</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        h1 { color: #333; }
+        .results { background: white; border-radius: 5px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .result-item { margin-bottom: 10px; }
+        .label { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1 id="entity-name">Cadence Design Systems</h1>
+    <div class="results">
+        <div class="result-item"><span class="label">Max Shares Outstanding:</span> <span id="share-max-value"></span> (FY: <span id="share-max-fy"></span>)</div>
+        <div class="result-item"><span class="label">Min Shares Outstanding:</span> <span id="share-min-value"></span> (FY: <span id="share-min-fy"></span>)</div>
+    </div>
+    <script>
+        async function fetchData(cik) {
+            const proxyUrl = 'https://api.apis.guru/v2/proxy/';
+            const apiUrl = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/dei/EntityCommonStockSharesOutstanding.json`;
+            const response = await fetch(proxyUrl + apiUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; SEC/1.0; +https://www.sec.gov)'
+                }
+            });
+            return await response.json();
+        }
+
+        function processSharesData(data) {
+            const entityName = data.entityName;
+            const shares = data.units.shares;
+            const filteredShares = shares.filter(share => share.fy > "2020" && !isNaN(share.val));
+
+            const max = filteredShares.reduce((prev, current) => (prev.val > current.val) ? prev : current);
+            const min = filteredShares.reduce((prev, current) => (prev.val < current.val) ? prev : current);
+
+            const resultData = {
+                entityName: entityName,
+                max: max,
+                min: min
+            };
+
+            document.getElementById('entity-name').textContent = entityName;
+            document.getElementById('share-max-value').textContent = max.val;
+            document.getElementById('share-max-fy').textContent = max.fy;
+            document.getElementById('share-min-value').textContent = min.val;
+            document.getElementById('share-min-fy').textContent = min.fy;
+
+            // Save data.json to localStorage or perform any other action you need
+            localStorage.setItem('data.json', JSON.stringify(resultData));
+        }
+
+        async function init() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const cik = urlParams.get('CIK') || '0000813672'; // Default CIK
+            const data = await fetchData(cik);
+            processSharesData(data);
+        }
+
+        init();
+    </script>
+</body>
+</html>
